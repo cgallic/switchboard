@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Switchboard — live run</title>
+<style>
+  :root { --bg:#0b0e14; --panel:#121722; --line:#1e2533; --ink:#e6edf3;
+          --muted:#8b97a7; --safe:#3fb950; --gate:#f0883e; --done:#58a6ff;
+          --fail:#f85149; --accent:#d2a8ff; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
+         background:var(--bg); color:var(--ink); }
+  header { padding:18px 24px; border-bottom:1px solid var(--line);
+           display:flex; align-items:center; justify-content:space-between; }
+  h1 { margin:0; font-size:18px; letter-spacing:.5px; }
+  .delta { text-align:right; }
+  .delta .baseline { color:var(--muted); font-size:13px; }
+  .delta .live { color:var(--safe); font-size:26px; font-weight:700; }
+  .wrap { display:grid; grid-template-columns:1fr 1fr; gap:0; height:calc(100vh - 70px); }
+  .col { padding:20px 24px; overflow:auto; }
+  .col + .col { border-left:1px solid var(--line); }
+  h2 { font-size:12px; text-transform:uppercase; letter-spacing:1.5px;
+       color:var(--muted); margin:0 0 14px; }
+  .stage { display:flex; align-items:center; gap:12px; padding:10px 12px;
+           border:1px solid var(--line); border-radius:8px; margin-bottom:8px;
+           background:var(--panel); opacity:.45; transition:opacity .2s; }
+  .stage.on { opacity:1; }
+  .dot { width:10px; height:10px; border-radius:50%; background:var(--muted); flex:none; }
+  .stage.safe .dot { background:var(--safe); }
+  .stage.irreversible .dot { background:var(--gate); }
+  .stage.terminal .dot { background:var(--done); }
+  .stage .name { font-weight:700; width:90px; }
+  .stage .note { color:var(--muted); font-size:13px; }
+  .gatecard { border:1px solid var(--gate); border-radius:8px; padding:14px;
+              margin:14px 0; background:rgba(240,136,62,.08); }
+  .gatecard b { color:var(--gate); }
+  .record { border:1px solid var(--line); border-radius:8px; background:var(--panel);
+            padding:16px; }
+  .record .row { display:flex; gap:10px; padding:5px 0; border-bottom:1px dashed var(--line); }
+  .record .k { color:var(--accent); width:130px; flex:none; }
+  .pill { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px;
+          font-weight:700; }
+  .pill.New { background:rgba(88,166,255,.18); color:var(--done); }
+  .pill.emergency { background:rgba(248,81,73,.18); color:var(--fail); }
+  .empty { color:var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>SWITCHBOARD · live call → Notion record</h1>
+  <div class="delta">
+    <div class="baseline" id="baseline">By hand: 6:51 · every call</div>
+    <div class="live" id="clock">0:00 · 0 typing</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="col">
+    <h2>The gated DAG</h2>
+    <div id="dag"></div>
+    <div id="gate"></div>
+  </div>
+  <div class="col">
+    <h2>The Notion job record</h2>
+    <div id="record" class="record"><span class="empty">waiting for the call to end…</span></div>
+  </div>
+</div>
+
+<script>
+// Demo-mode viewer. Polls /run.json (written by the agent) and lights up the DAG.
+// Falls back to an embedded sample so the page renders standalone for screenshots.
+const LANE = [
+  {name:"intake",   gate:"safe",         desc:"call payload received"},
+  {name:"extract",  gate:"safe",         desc:"Claude → structured record"},
+  {name:"dedupe",   gate:"safe",         desc:"new vs. returning"},
+  {name:"file",     gate:"irreversible", desc:"write to live Notion"},
+  {name:"schedule", gate:"safe",         desc:"dated follow-up"},
+  {name:"verify",   gate:"terminal",     desc:"queryable confirmed"},
+];
+
+const SAMPLE = {
+  status:"done", stage:"verify",
+  reached:["intake","extract","dedupe","file","schedule","verify"],
+  notes:{intake:"payload received from +1 787 555 0142",
+         extract:"Maria Delgado / Water heater repair / urgency=emergency",
+         dedupe:"new customer",
+         file:"filed Notion record job_a1b2c3 (status New)",
+         schedule:"follow-up scheduled for tomorrow",
+         verify:"verified: record is queryable (1 New job)"},
+  gate:null,
+  record:{Customer:"Maria Delgado", Phone:"+1 787 555 0142",
+          Service:"Water heater repair", Urgency:"emergency",
+          Address:"Maple Street (blue house)",
+          Summary:"Water heater leaking in the garage — needs same-day visit.",
+          Quote:"asked about price", Status:"New", "Follow-up":"tomorrow"},
+  // instrumented time-delta (the agent writes these into run.json each tick)
+  elapsed_seconds:48, baseline_seconds:411, saved_seconds:363
+};
+
+function fmt(sec){
+  sec = Math.max(0, Math.round(sec||0));
+  const m = Math.floor(sec/60), s = sec%60;
+  return m + ":" + String(s).padStart(2,"0");
+}
+
+function renderClock(run){
+  // The on-screen delta is read straight from the agent's own run.json
+  // (elapsed_seconds vs. baseline_seconds) — an instrumented in-app counter,
+  // not a desk stopwatch. Falls back gracefully if a field is missing.
+  const base = run.baseline_seconds;
+  if(typeof base === "number"){
+    document.getElementById("baseline").textContent =
+      "By hand: " + fmt(base) + " · every call";
+  }
+  const el = document.getElementById("clock");
+  const elapsed = run.elapsed_seconds;
+  if(typeof elapsed === "number"){
+    // Once the run is done, typing cost stays 0 regardless of wall-clock.
+    const label = (run.status === "done" || run.status === "verify")
+      ? fmt(elapsed) + " · 0 typing"
+      : fmt(elapsed) + " · running, 0 typing";
+    el.textContent = label;
+  }
+}
+
+function renderDAG(run){
+  const dag = document.getElementById("dag");
+  dag.innerHTML = "";
+  for(const s of LANE){
+    const on = run.reached && run.reached.includes(s.name);
+    const note = (run.notes && run.notes[s.name]) || s.desc;
+    dag.insertAdjacentHTML("beforeend",
+      `<div class="stage ${s.gate} ${on?'on':''}">
+         <span class="dot"></span>
+         <span class="name">${s.name}</span>
+         <span class="note">${note}</span>
+       </div>`);
+  }
+  const g = document.getElementById("gate");
+  if(run.status==="blocked" && run.gate){
+    g.innerHTML = `<div class="gatecard"><b>⏸ BLOCKED at "${run.gate.stage}"</b><br>
+      ${run.gate.reason}<br><small>approve to run the live write</small></div>`;
+  } else { g.innerHTML = ""; }
+}
+
+function renderRecord(run){
+  const el = document.getElementById("record");
+  if(!run.record){ el.innerHTML = '<span class="empty">waiting…</span>'; return; }
+  el.innerHTML = Object.entries(run.record).map(([k,v])=>{
+    let val = v;
+    if(k==="Status") val = `<span class="pill New">${v}</span>`;
+    if(k==="Urgency" && v==="emergency") val = `<span class="pill emergency">${v}</span>`;
+    return `<div class="row"><span class="k">${k}</span><span>${val}</span></div>`;
+  }).join("");
+}
+
+async function tick(){
+  let run = SAMPLE;
+  try{ const r = await fetch("run.json",{cache:"no-store"}); if(r.ok) run = await r.json(); }catch(e){}
+  renderDAG(run); renderRecord(run); renderClock(run);
+}
+tick(); setInterval(tick, 1000);
+</script>
+</body>
+</html>

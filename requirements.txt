@@ -1,0 +1,9 @@
+# Core runtime: NONE. The offline demo + test suite are stdlib-only.
+#
+# Live mode (real Claude extraction + real Notion writes + MCP serving):
+#   pip install -e ".[live,mcp]"
+#
+# or install the optional deps directly:
+# anthropic>=0.39
+# notion-client>=2.2
+# mcp>=1.2
