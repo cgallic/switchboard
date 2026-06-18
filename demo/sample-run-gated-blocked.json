@@ -1,0 +1,50 @@
+{
+  "run_id": "run_835a67e6d6",
+  "status": "blocked",
+  "stage": "file",
+  "autonomy": "gated",
+  "source": "call",
+  "reached": [
+    "intake",
+    "extract",
+    "dedupe",
+    "file"
+  ],
+  "notes": {
+    "intake": "call-ended payload received from +17875550142",
+    "extract": "extracted: Maria Delgado / Water heater repair / urgency=emergency",
+    "dedupe": "new customer",
+    "file": "awaiting approval before the live write"
+  },
+  "gate": {
+    "stage": "file",
+    "desc": "create_job_record: write the job row into the owner's live Notion DB",
+    "reason": "writes to the owner's live Notion workspace \u2014 needs approval",
+    "preview": {
+      "_source": "call",
+      "customer_name": "Maria Delgado",
+      "phone": "+17875550142",
+      "service_type": "Water heater repair",
+      "urgency": "emergency",
+      "address": "Maple",
+      "job_summary": "Yeah hi, this is Maria Delgado, my water heater's leaking all over the garage, there's water everywhere, can someone come out today? I'm on ...",
+      "quote_hint": "asked about price",
+      "_dedupe": "new"
+    },
+    "approved": false
+  },
+  "record": {
+    "Customer": "Maria Delgado",
+    "Phone": "+17875550142",
+    "Service": "Water heater repair",
+    "Urgency": "emergency",
+    "Address": "Maple",
+    "Summary": "Yeah hi, this is Maria Delgado, my water heater's leaking all over the garage, there's water everywhere, can someone come out today? I'm on ...",
+    "Quote": "asked about price",
+    "Status": "",
+    "Follow-up": ""
+  },
+  "elapsed_seconds": 0.0,
+  "baseline_seconds": 411,
+  "saved_seconds": 411.0
+}

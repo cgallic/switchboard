@@ -1,0 +1,38 @@
+{
+  "run_id": "run_568a4df649",
+  "status": "done",
+  "stage": "verify",
+  "autonomy": "auto",
+  "source": "call",
+  "reached": [
+    "intake",
+    "extract",
+    "dedupe",
+    "file",
+    "schedule",
+    "verify"
+  ],
+  "notes": {
+    "intake": "call-ended payload received from +17875550142",
+    "extract": "extracted: Maria Delgado / Water heater repair / urgency=emergency",
+    "dedupe": "new customer",
+    "file": "filed Notion record job_400096b8ff (status New)",
+    "schedule": "follow-up scheduled for 2026-06-19",
+    "verify": "verified: record is queryable (1 New jobs in the DB)"
+  },
+  "gate": null,
+  "record": {
+    "Customer": "Maria Delgado",
+    "Phone": "+17875550142",
+    "Service": "Water heater repair",
+    "Urgency": "emergency",
+    "Address": "Maple",
+    "Summary": "Yeah hi, this is Maria Delgado, my water heater's leaking all over the garage, there's water everywhere, can someone come out today? I'm on ...",
+    "Quote": "asked about price",
+    "Status": "New",
+    "Follow-up": "2026-06-19"
+  },
+  "elapsed_seconds": 0.0,
+  "baseline_seconds": 411,
+  "saved_seconds": 411.0
+}
