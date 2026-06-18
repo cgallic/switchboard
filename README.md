@@ -104,6 +104,12 @@ python -m switchboard.agent_loop --demo      # writes viewer/run.json
 # then open viewer/index.html in a browser
 ```
 
+**Already captured:** `demo/` holds a screen recording (`switchboard-demo.mp4`) of this
+viewer animating through a real autonomous run and a real gated run (it blocks at the
+irreversible Notion write, then approves), plus the three frame screenshots and the
+exact `run.json` snapshots behind them. See `demo/README.md` — every asset is
+reproducible from the commands above.
+
 ---
 
 ## Architecture
